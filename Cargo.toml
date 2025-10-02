@@ -1,0 +1,58 @@
+[package]
+name = "myzkp"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["kzg"]
+kzg = []
+hiding-kzg = []
+dev-srs = []
+lookups = []
+zeta-shift = []
+strict-recompute-r = []
+
+[dependencies]
+anyhow = "1"
+argon2 = "0.5"
+rand = "0.8"
+blake3 = "1"
+ark-ff = "0.4"
+ark-ec = "0.4"
+ark-serialize = { version = "0.4", features = ["derive"] }
+ark-bn254 = "0.4"
+hex = "0.4"
+thiserror = "1"
+axum = { version = "0.7", features = ["macros", "json", "multipart"] }
+tokio = { version = "1.38", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+base64 = "0.22"
+axum-extra = { version = "0.9", features = ["typed-header"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+chrono = { version = "0.4", features = ["clock"] }
+async-stripe = { version = "0.37", default-features = false, features = ["checkout", "runtime-tokio-hyper-rustls"] }
+base64ct = "=1.7.3"
+hmac = "0.12"
+sha2 = "0.10"
+tower_governor = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[[bin]]
+name = "prover"
+path = "src/bin/prover.rs"
+
+[[bin]]
+name = "verifier"
+path = "src/bin/verifier.rs"
+
+[[bin]]
+name = "tinyzkp_api"
+path = "src/bin/tinyzkp_api.rs"
+
+[[bin]]
+name = "generate_dev_srs"
+path = "src/bin/generate_dev_srs.rs"
+required-features = ["dev-srs"]
