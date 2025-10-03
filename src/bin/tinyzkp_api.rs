@@ -792,15 +792,22 @@ async fn auth_login(
         .and_then(|h| h.to_str().ok())
         .unwrap_or("unknown");
     
+    info!("Login attempt: email={}, ip={}", email, client_ip);
+    
     let uid_v = st
         .kvs
         .get(&format!("tinyzkp:user:by_email:{email}"))
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(|e| {
+            error!("Redis error fetching user by email: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?
         .ok_or_else(|| {
             warn!(email = %email, ip = %client_ip, "Failed login: user not found");
             (StatusCode::UNAUTHORIZED, "invalid credentials".into())
         })?;
+    
+    info!("Found user by email, uid_v={}", uid_v);
     let uid_obj: serde_json::Value =
         serde_json::from_str(&uid_v).unwrap_or(serde_json::json!({}));
     let user_id = uid_obj
@@ -809,29 +816,52 @@ async fn auth_login(
         .unwrap_or("")
         .to_string();
     if user_id.is_empty() {
+        error!("User ID is empty after parsing uid_v");
         return Err((StatusCode::UNAUTHORIZED, "invalid credentials".into()));
     }
 
+    info!("Fetching user object for user_id={}", user_id);
     let user_v = st
         .kvs
         .get(&format!("tinyzkp:user:{user_id}"))
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-        .ok_or((StatusCode::UNAUTHORIZED, "invalid credentials".into()))?;
+        .map_err(|e| {
+            error!("Redis error fetching user object: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?
+        .ok_or_else(|| {
+            error!("User object not found for user_id={}", user_id);
+            (StatusCode::UNAUTHORIZED, "invalid credentials".into())
+        })?;
+    
+    info!("Found user object, user_v length={}", user_v.len());
     let user: serde_json::Value = serde_json::from_str(&user_v).unwrap_or(serde_json::json!({}));
 
     let pw_hash = user
         .get("pw_hash")
         .and_then(|x| x.as_str())
-        .ok_or((StatusCode::UNAUTHORIZED, "invalid credentials".into()))?;
+        .ok_or_else(|| {
+            error!("pw_hash field missing from user object");
+            (StatusCode::UNAUTHORIZED, "invalid credentials".into())
+        })?;
+    
+    info!("Parsing password hash...");
     let parsed =
-        PasswordHash::new(pw_hash).map_err(|_| (StatusCode::UNAUTHORIZED, "invalid credentials".into()))?;
+        PasswordHash::new(pw_hash).map_err(|e| {
+            error!("Failed to parse password hash: {:?}", e);
+            (StatusCode::UNAUTHORIZED, "invalid credentials".into())
+        })?;
+    
+    info!("Verifying password...");
     Argon2::default()
         .verify_password(req.password.as_bytes(), &parsed)
-        .map_err(|_| {
+        .map_err(|e| {
+            error!("Password verification failed: {:?}", e);
             warn!(email = %email, ip = %client_ip, "Failed login: invalid password");
             (StatusCode::UNAUTHORIZED, "invalid credentials".into())
         })?;
+    
+    info!("Password verified successfully for user_id={}", user_id);
 
     let api_key = user
         .get("api_key")

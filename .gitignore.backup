@@ -1,0 +1,37 @@
+# Environment & Secrets - NEVER COMMIT THESE
+.env
+.env.*
+*.env
+.env.local
+.env.backup
+.env.production
+.env.staging
+
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# SRS Files (users generate their own)
+
+# Proof artifacts
+proof.bin
+proof.bin.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+*.err
+time_*.err
+
+# Test artifacts
+selectors_test.csv
