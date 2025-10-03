@@ -35,10 +35,6 @@ RUN useradd -m -u 1000 tinyzkp && \
 
 USER tinyzkp
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:${PORT:-8080}/v1/health || exit 1
-
 # Railway sets PORT automatically
 ENV TINYZKP_ADDR=0.0.0.0:${PORT:-8080}
 
