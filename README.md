@@ -11,7 +11,7 @@ TinyZKP is a high-performance ZKP prover/verifier that uses only O(√T) memory 
 
 ## 🌟 Features
 
-- **Sublinear Space**: Proves traces of 65K rows using only ~256 row memory
+- **Sublinear Space**: Proves traces of 131K rows using only ~362 row memory
 - **Production Capacity**: 131K degree SRS (supports circuits up to 131,072 rows)
 - **Production API**: REST API with tiered pricing (Free/Pro/Scale)
 - **Secure**: HMAC webhook verification, rate limiting, CORS protection
@@ -28,12 +28,12 @@ TinyZKP is a high-performance ZKP prover/verifier that uses only O(√T) memory 
 
 ## 🎯 Why TinyZKP?
 
-**Traditional ZKP provers** require O(T) memory - proving a 65K row circuit needs 65K rows in memory.
+**Traditional ZKP provers** require O(T) memory - proving a 131K row circuit needs 131K rows in memory.
 
-**TinyZKP** uses streaming algorithms to prove with only O(√T) memory - proving a 65K row circuit needs just ~256 rows in memory.
+**TinyZKP** uses streaming algorithms to prove with only O(√T) memory - proving a 131K row circuit needs just ~362 rows in memory.
 
 **Result**: 
-- 💾 **256x less memory** for large circuits
+- 💾 **362x less memory** for large circuits
 - ⚡ **Faster proofs** on constrained hardware  
 - 🌐 **REST API** - no local setup required
 - 💰 **Pay as you grow** - free tier to start
@@ -111,7 +111,7 @@ Our hosted API is available at `https://api.tinyzkp.com`
 |------|------------------|----------|-------|
 | Free | 500 | 4,096 | $0/mo |
 | Pro | 5,000 | 16,384 | $39/mo |
-| Scale | 50,000 | 65,536 | $199/mo |
+| Scale | 50,000 | 131,072 | $199/mo |
 
 ### 📊 Usage Limits
 
@@ -119,7 +119,7 @@ Our hosted API is available at `https://api.tinyzkp.com`
 |------|----------------|------------------|------------|
 | Free | 500 | 4,096 rows | 10 req/sec |
 | Pro | 5,000 | 16,384 rows | 10 req/sec |
-| Scale | 50,000 | 65,536 rows | 10 req/sec |
+| Scale | 50,000 | 131,072 rows | 10 req/sec |
 
 Rate limiting is enforced per IP address (burst: 30).
 
@@ -262,7 +262,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ### Rate Limits
 - Global: 10 requests/second per IP (burst: 30)
 - Monthly caps enforced per tier (Free: 500, Pro: 5K, Scale: 50K)
-- Circuit size limits enforced per tier (Free: 4K, Pro: 16K, Scale: 65K)
+- Circuit size limits enforced per tier (Free: 4K, Pro: 16K, Scale: 131K)
 
 ---
 

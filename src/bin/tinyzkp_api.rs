@@ -1716,7 +1716,7 @@ async fn main() -> anyhow::Result<()> {
     let scale_max_rows = std::env::var("TINYZKP_SCALE_MAX_ROWS")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(65_536);
+        .unwrap_or(131_072);
 
     let allow_dev_srs = std::env::var("TINYZKP_ALLOW_DEV_SRS")
         .map(|s| s == "true")

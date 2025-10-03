@@ -55,10 +55,9 @@
 |------|------------------|----------|-------------|--------|
 | **Free** | 500 | 4,096 | ✅ Yes | Ready |
 | **Pro** | 5,000 | 16,384 | ✅ Yes | Ready |
-| **Scale** | 50,000 | 65,536 | ✅ Yes | Ready |
-| **Global Max** | - | 131,072 | ✅ Yes | Ready |
+| **Scale** | 50,000 | 131,072 | ✅ Yes | Ready |
 
-**Your API can now serve all user tiers including blockchain developers!** 🎯
+**Scale tier now provides full SRS capacity - no artificial limits!** 🎯
 
 ---
 
@@ -169,15 +168,15 @@
 - Up to 4,096 rows per proof
 - Perfect for testing and small projects
 
-### For Professional Developers (Pro Tier - $29/mo)
+### For Professional Developers (Pro Tier - $39/mo)
 - 5,000 proofs/month
 - Up to 16,384 rows per proof
 - Great for production dApps
 
-### For Blockchain Teams (Scale Tier - $99/mo)
+### For Blockchain Teams (Scale Tier - $199/mo)
 - 50,000 proofs/month
-- Up to 65,536 rows per proof
-- Enterprise-grade capacity
+- Up to 131,072 rows per proof
+- Full SRS capacity - blockchain-scale circuits
 
 ---
 

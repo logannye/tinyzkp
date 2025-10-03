@@ -242,7 +242,7 @@ RUST_LOG=info,tower_http=info,tinyzkp_api=info
 TINYZKP_MAX_ROWS=131072           # Global safety limit
 TINYZKP_FREE_MAX_ROWS=4096        # Free tier limit
 TINYZKP_PRO_MAX_ROWS=16384        # Pro tier limit
-TINYZKP_SCALE_MAX_ROWS=65536      # Scale tier limit
+TINYZKP_SCALE_MAX_ROWS=131072     # Scale tier limit (full SRS capacity)
 ```
 
 ---
