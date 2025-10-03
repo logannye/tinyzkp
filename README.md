@@ -110,8 +110,8 @@ Our hosted API is available at `https://api.tinyzkp.com`
 | Tier | Monthly Requests | Max Rows | Price |
 |------|------------------|----------|-------|
 | Free | 500 | 4,096 | $0/mo |
-| Pro | 5,000 | 16,384 | $29/mo |
-| Scale | 50,000 | 65,536 | $99/mo |
+| Pro | 5,000 | 16,384 | $39/mo |
+| Scale | 50,000 | 65,536 | $199/mo |
 
 ### 📊 Usage Limits
 
@@ -127,7 +127,7 @@ Rate limiting is enforced per IP address (burst: 30).
 
 1. Sign up for free tier (500 proofs/month)
 2. Visit https://tinyzkp.com to upgrade
-3. Choose Pro ($29/mo) or Scale ($99/mo)
+3. Choose Pro ($39/mo) or Scale ($199/mo)
 4. Complete payment via Stripe
 5. Your account is upgraded instantly
 6. Same API key, new limits!
