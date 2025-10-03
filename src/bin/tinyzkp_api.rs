@@ -22,7 +22,7 @@
 //! - POST /v1/admin/srs/init                 -> initialize SRS (one-time, required before proving/verifying)
 //!
 //! Billing endpoints (Stripe):
-//! - POST /v1/billing/checkout   (requires X-API-Key) -> { url }  // Stripe Checkout URL
+//! - POST /v1/billing/checkout   (Authorization: Bearer <session>) -> { checkout_url }
 //! - POST /v1/stripe/webhook     (Stripe calls)       -> { ok: true }
 //!
 //! Notes:
@@ -369,11 +369,13 @@ struct CheckoutReq {
     customer_email: Option<String>,
     #[serde(default)]
     plan: Option<String>,
+    #[serde(default)]
+    tier: Option<String>,
 }
 
 #[derive(Serialize)]
 struct CheckoutRes {
-    url: String,
+    checkout_url: String,
 }
 
 #[derive(Serialize)]
@@ -1382,20 +1384,34 @@ async fn billing_checkout(
     headers: HeaderMap,
     Json(req): Json<CheckoutReq>,
 ) -> Result<Json<CheckoutRes>, (StatusCode, String)> {
-    let api_key = headers
-        .get("x-api-key")
-        .and_then(|h| h.to_str().ok())
-        .ok_or((StatusCode::UNAUTHORIZED, "missing X-API-Key".into()))?
-        .to_string();
-
-    let _tier = st
+    // Use session authentication (not API key)
+    let (user_id, email) = auth_session(&st.kvs, &headers).await?;
+    
+    // Get user's API key to link subscription
+    let user_v = st
         .kvs
-        .get(&format!("tinyzkp:key:tier:{api_key}"))
+        .get(&format!("tinyzkp:user:{user_id}"))
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-        .ok_or((StatusCode::UNAUTHORIZED, "unknown API key".into()))?;
+        .ok_or((StatusCode::UNAUTHORIZED, "invalid session".into()))?;
+    
+    // Handle Redis array-wrapped JSON
+    let user_json_str = if user_v.starts_with('[') {
+        let arr: Vec<String> = serde_json::from_str(&user_v).unwrap_or_default();
+        arr.first().cloned().unwrap_or_default()
+    } else {
+        user_v.clone()
+    };
+    
+    let user: serde_json::Value = serde_json::from_str(&user_json_str).unwrap_or(serde_json::json!({}));
+    let api_key = user
+        .get("api_key")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
 
-    let plan = req.plan.as_deref().unwrap_or("pro");
+    // Accept both "tier" and "plan" from request (tier preferred)
+    let plan = req.tier.as_deref().or(req.plan.as_deref()).unwrap_or("pro");
     let (price_id, tier_str) = if plan.eq_ignore_ascii_case("scale") {
         (st.price_scale.as_str(), "scale")
     } else {
@@ -1435,7 +1451,7 @@ async fn billing_checkout(
     let url = session
         .url
         .ok_or((StatusCode::BAD_GATEWAY, "stripe: missing checkout URL".into()))?;
-    Ok(Json(CheckoutRes { url }))
+    Ok(Json(CheckoutRes { checkout_url: url }))
 }
 
 /// Verifies Stripe webhook signature using HMAC-SHA256
