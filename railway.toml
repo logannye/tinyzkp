@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "./target/release/tinyzkp_api"
+startCommand = "/usr/local/bin/tinyzkp_api"
 healthcheckPath = "/v1/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
