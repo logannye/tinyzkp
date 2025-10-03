@@ -1011,8 +1011,17 @@ async fn rotate_key(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::UNAUTHORIZED, "invalid session".into()))?;
+    
+    // Handle Redis returning array-wrapped JSON: ["{...}"] -> {...}
+    let user_json_str = if user_v.starts_with('[') {
+        let arr: Vec<String> = serde_json::from_str(&user_v).unwrap_or_default();
+        arr.first().cloned().unwrap_or_default()
+    } else {
+        user_v.clone()
+    };
+    
     let mut user: serde_json::Value =
-        serde_json::from_str(&user_v).unwrap_or(serde_json::json!({}));
+        serde_json::from_str(&user_json_str).unwrap_or(serde_json::json!({}));
 
     let old_api = user
         .get("api_key")
@@ -1020,13 +1029,21 @@ async fn rotate_key(
         .unwrap_or("")
         .to_string();
 
-    let tier_str = st
+    let tier_raw = st
         .kvs
         .get(&format!("tinyzkp:key:tier:{old_api}"))
         .await
         .ok()
         .flatten()
         .unwrap_or_else(|| "free".into());
+    
+    // Handle Redis returning array-wrapped strings: ["free"] -> free
+    let tier_str = if tier_raw.starts_with('[') {
+        let arr: Vec<String> = serde_json::from_str(&tier_raw).unwrap_or_default();
+        arr.first().cloned().unwrap_or_else(|| "free".into())
+    } else {
+        tier_raw
+    };
 
     let new_api = random_key();
     let year = 365 * 24 * 3600;
