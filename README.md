@@ -54,9 +54,9 @@ Our hosted API is available at `https://api.tinyzkp.com`
 
 | Tier | Monthly Requests | Max Rows | Price |
 |------|------------------|----------|-------|
-| Free | 500 | 4,096 | $0/mo |
-| Pro | 5,000 | 16,384 | $29/mo |
-| Scale | 50,000 | 65,536 | $99/mo |
+| Free | 100 | 4,096 | $0/mo |
+| Pro | 5,000 | 16,384 | $39/mo |
+| Scale | 50,000 | 65,536 | $199/mo |
 
 ### API Example
 
