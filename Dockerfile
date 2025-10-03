@@ -42,7 +42,8 @@ RUN useradd -m -u 1000 tinyzkp && \
     mkdir -p /app/srs && \
     chown -R tinyzkp:tinyzkp /app /tmp/srs-init
 
-USER tinyzkp
+# Don't switch to tinyzkp user yet - entrypoint needs root to access volume
+# USER tinyzkp will be set in entrypoint after copying files
 
 # Railway sets PORT automatically
 ENV TINYZKP_ADDR=0.0.0.0:${PORT:-8080}
