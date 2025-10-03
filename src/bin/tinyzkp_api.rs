@@ -582,7 +582,16 @@ async fn auth_session(kvs: &Kvs, headers: &HeaderMap) -> Result<(String, String)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::UNAUTHORIZED, "invalid session".into()))?;
-    let obj: serde_json::Value = serde_json::from_str(&v).unwrap_or(serde_json::json!({}));
+    
+    // Handle Redis returning array-wrapped JSON: ["{...}"] -> {...}
+    let session_json_str = if v.starts_with('[') {
+        let arr: Vec<String> = serde_json::from_str(&v).unwrap_or_default();
+        arr.first().cloned().unwrap_or_default()
+    } else {
+        v.clone()
+    };
+    
+    let obj: serde_json::Value = serde_json::from_str(&session_json_str).unwrap_or(serde_json::json!({}));
     let uid = obj.get("user_id").and_then(|x| x.as_str()).unwrap_or("").to_string();
     let email = obj.get("email").and_then(|x| x.as_str()).unwrap_or("").to_string();
     if uid.is_empty() {
