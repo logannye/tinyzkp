@@ -16,7 +16,7 @@ We take security seriously. If you discover a security vulnerability, please fol
 
 ### 1. Contact Us Privately
 
-Email: **security@tinyzkp.com** (or create a private issue via GitHub Security Advisories)
+Create a private issue via GitHub Security Advisories
 
 ### 2. Include the Following Information:
 
