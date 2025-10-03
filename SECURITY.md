@@ -88,8 +88,8 @@ We believe in recognizing security researchers:
 
 **Recommended Sources**:
 - [Perpetual Powers of Tau](https://github.com/privacy-scaling-explorations/perpetualpowersoftau)
-- [Hermez/Polygon Ceremony](https://hermez.s3-eu-west-1.amazonaws.com/)
-- [Aztec Ignition](https://aztec-ignition.s3.amazonaws.com/)
+- [CDK-Erigon/Polygon Ceremony](https://github.com/0xPolygon/cdk-erigon)
+- [Aztec Ignition]([https://aztec-ignition.s3.amazonaws.com/](https://github.com/AztecProtocol/ignition-verification))
 
 ### 2. API Key Management
 
