@@ -29,9 +29,18 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/target/release/tinyzkp_api /usr/local/bin/
 
+# Copy SRS files to /tmp (will be moved to volume on startup)
+COPY srs/*.bin /tmp/srs-init/
+
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
 # Create non-root user
 RUN useradd -m -u 1000 tinyzkp && \
-    chown -R tinyzkp:tinyzkp /app
+    chown -R tinyzkp:tinyzkp /app && \
+    mkdir -p /app/srs && \
+    chown -R tinyzkp:tinyzkp /tmp/srs-init && \
+    chmod +x /usr/local/bin/entrypoint.sh
 
 USER tinyzkp
 
@@ -40,4 +49,4 @@ ENV TINYZKP_ADDR=0.0.0.0:${PORT:-8080}
 
 EXPOSE ${PORT:-8080}
 
-CMD ["tinyzkp_api"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

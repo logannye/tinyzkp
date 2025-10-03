@@ -13,8 +13,6 @@ target/
 *.pdb
 
 # SRS Files (users generate their own)
-srs/
-*.bin
 
 # Proof artifacts
 proof.bin
