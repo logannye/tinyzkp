@@ -808,15 +808,26 @@ async fn auth_login(
         })?;
     
     info!("Found user by email, uid_v={}", uid_v);
+    
+    // Handle Redis returning array-wrapped JSON: ["{...}"] -> {...}
+    let uid_json_str = if uid_v.starts_with('[') {
+        // Parse as array, extract first element
+        let arr: Vec<String> = serde_json::from_str(&uid_v).unwrap_or_default();
+        arr.first().cloned().unwrap_or_default()
+    } else {
+        uid_v.clone()
+    };
+    
+    info!("Extracted uid_json_str: {}", uid_json_str);
     let uid_obj: serde_json::Value =
-        serde_json::from_str(&uid_v).unwrap_or(serde_json::json!({}));
+        serde_json::from_str(&uid_json_str).unwrap_or(serde_json::json!({}));
     let user_id = uid_obj
         .get("user_id")
         .and_then(|x| x.as_str())
         .unwrap_or("")
         .to_string();
     if user_id.is_empty() {
-        error!("User ID is empty after parsing uid_v");
+        error!("User ID is empty after parsing. uid_obj={}", uid_obj);
         return Err((StatusCode::UNAUTHORIZED, "invalid credentials".into()));
     }
 
@@ -834,8 +845,18 @@ async fn auth_login(
             (StatusCode::UNAUTHORIZED, "invalid credentials".into())
         })?;
     
-    info!("Found user object, user_v length={}", user_v.len());
-    let user: serde_json::Value = serde_json::from_str(&user_v).unwrap_or(serde_json::json!({}));
+    info!("Found user object, user_v length={}, user_v={}", user_v.len(), 
+        if user_v.len() > 200 { &user_v[..200] } else { &user_v });
+    
+    // Handle Redis returning array-wrapped JSON: ["{...}"] -> {...}
+    let user_json_str = if user_v.starts_with('[') {
+        let arr: Vec<String> = serde_json::from_str(&user_v).unwrap_or_default();
+        arr.first().cloned().unwrap_or_default()
+    } else {
+        user_v.clone()
+    };
+    
+    let user: serde_json::Value = serde_json::from_str(&user_json_str).unwrap_or(serde_json::json!({}));
 
     let pw_hash = user
         .get("pw_hash")
