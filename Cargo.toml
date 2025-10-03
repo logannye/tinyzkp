@@ -56,3 +56,7 @@ path = "src/bin/tinyzkp_api.rs"
 name = "generate_dev_srs"
 path = "src/bin/generate_dev_srs.rs"
 required-features = ["dev-srs"]
+
+[[bin]]
+name = "generate_production_srs"
+path = "src/bin/generate_production_srs.rs"
