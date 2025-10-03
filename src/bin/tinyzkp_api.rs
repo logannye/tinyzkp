@@ -890,13 +890,21 @@ async fn auth_login(
         .unwrap_or("")
         .to_string();
 
-    let tier_live = st
+    let tier_raw = st
         .kvs
         .get(&format!("tinyzkp:key:tier:{api_key}"))
         .await
         .ok()
         .flatten()
         .unwrap_or_else(|| "free".into());
+    
+    // Handle Redis returning array-wrapped strings: ["free"] -> free
+    let tier_live = if tier_raw.starts_with('[') {
+        let arr: Vec<String> = serde_json::from_str(&tier_raw).unwrap_or_default();
+        arr.first().cloned().unwrap_or_else(|| "free".into())
+    } else {
+        tier_raw
+    };
 
     let session = new_session(&st.kvs, &user_id, &email)
         .await
