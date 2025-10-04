@@ -40,7 +40,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Create non-root user
 RUN useradd -m -u 1000 tinyzkp && \
     mkdir -p /app/srs && \
-    chown -R tinyzkp:tinyzkp /app /tmp/srs-init
+    chown -R tinyzkp:tinyzkp /app
 
 # Don't switch to tinyzkp user yet - entrypoint needs root to access volume
 # USER tinyzkp will be set in entrypoint after copying files
