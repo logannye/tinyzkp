@@ -11,8 +11,9 @@ TinyZKP is a high-performance ZKP prover/verifier that uses only O(√T) memory 
 
 ## 🌟 Features
 
-- **Sublinear Space**: Proves traces of 131K rows using only ~362 row memory
-- **Production Capacity**: 131K degree SRS (supports circuits up to 131,072 rows)
+- **Sublinear Space**: Proves traces of 2M rows using only ~1,448 row memory (1,450× less!)
+- **Production Capacity**: 2M degree SRS (supports circuits up to 2,097,152 rows)
+- **Production zkML**: Enable MobileNet, ResNet-18, DistilBERT inference proofs
 - **Production API**: REST API with tiered pricing (Free/Pro/Scale)
 - **Secure**: HMAC webhook verification, rate limiting, CORS protection
 - **Fast**: Streaming Blocked-IFFT, optimized BN254 operations
@@ -28,13 +29,14 @@ TinyZKP is a high-performance ZKP prover/verifier that uses only O(√T) memory 
 
 ## 🎯 Why TinyZKP?
 
-**Traditional ZKP provers** require O(T) memory - proving a 131K row circuit needs 131K rows in memory.
+**Traditional ZKP provers** require O(T) memory - proving a 2M row circuit needs 2M rows in memory (~64 MB).
 
-**TinyZKP** uses streaming algorithms to prove with only O(√T) memory - proving a 131K row circuit needs just ~362 rows in memory.
+**TinyZKP** uses streaming algorithms to prove with only O(√T) memory - proving a 2M row circuit needs just ~1,448 rows in memory (~23 KB).
 
 **Result**: 
-- 💾 **362x less memory** for large circuits
-- ⚡ **Faster proofs** on constrained hardware  
+- 💾 **1,450× less memory** for large circuits (23 KB vs 64 MB)
+- ⚡ **Faster proofs** on commodity hardware  
+- 🧠 **zkML-ready** - MobileNet, ResNet-18, DistilBERT
 - 🌐 **REST API** - no local setup required
 - 💰 **Pay as you grow** - free tier to start
 
@@ -59,12 +61,14 @@ curl -X POST https://api.tinyzkp.com/v1/auth/login \
   -d '{"email":"you@example.com","password":"YourSecurePass123!"}'
 ```
 
-Response includes your API key: `zkp_live_abc123...`
+Response includes:
+- `session_token` - For account management (dashboard, billing)
+- `api_key` - For proof generation (starts with `tz_`)
 
 3. **Generate a proof**
 ```bash
 curl -X POST https://api.tinyzkp.com/v1/prove \
-  -H "Authorization: Bearer zkp_live_your_key_here" \
+  -H "X-API-Key: tz_your_key_here" \
   -H "Content-Type: application/json" \
   -d @proof_request.json
 ```
@@ -107,27 +111,32 @@ Our hosted API is available at `https://api.tinyzkp.com`
 
 ### Pricing Tiers
 
-| Tier | Monthly Requests | Max Rows | Price |
-|------|------------------|----------|-------|
-| Free | 500 | 4,096 | $0/mo |
-| Pro | 5,000 | 16,384 | $39/mo |
-| Scale | 50,000 | 131,072 | $199/mo |
+| Tier | Price | Monthly Proofs | Max Circuit Size | Best For |
+|------|-------|----------------|------------------|----------|
+| **Free** | $0/mo | 500 | 16,384 rows | Learning, prototyping |
+| **Pro** | $49/mo | 250 | 1,048,576 rows (1M) | Production zkML apps |
+| **Scale** | $299/mo | 100 | 2,097,152 rows (2M) | Enterprise zkML |
 
-### 📊 Usage Limits
+### 📊 What You Can Prove
 
-| Tier | Monthly Proofs | Max Circuit Size | Rate Limit |
-|------|----------------|------------------|------------|
-| Free | 500 | 4,096 rows | 10 req/sec |
-| Pro | 5,000 | 16,384 rows | 10 req/sec |
-| Scale | 50,000 | 131,072 rows | 10 req/sec |
+| Tier | Circuit Size | Example Use Cases |
+|------|--------------|-------------------|
+| **Free (16K rows)** | 16,384 | MNIST-class models, basic constraint systems |
+| **Pro (1M rows)** | 1,048,576 | MobileNet (quantized), CIFAR-10 CNNs, medium ML models |
+| **Scale (2M rows)** | 2,097,152 | **MobileNet V2, ResNet-18, DistilBERT** - production zkML |
 
-Rate limiting is enforced per IP address (burst: 30).
+### Rate Limits
+
+- **Global**: 10 requests/second per IP (burst: 30)
+- **Monthly caps**: Enforced per tier (see table above)
+- **Circuit size**: Enforced per tier
+- **Proof generation**: Up to 2M rows (Scale tier)
 
 ### 💳 Upgrading Your Account
 
-1. Sign up for free tier (500 proofs/month)
+1. Sign up for free tier (500 proofs/month, 16K rows)
 2. Visit https://tinyzkp.com to upgrade
-3. Choose Pro ($39/mo) or Scale ($199/mo)
+3. Choose Pro ($49/mo, 1M rows) or Scale ($299/mo, 2M rows)
 4. Complete payment via Stripe
 5. Your account is upgraded instantly
 6. Same API key, new limits!
@@ -178,11 +187,14 @@ Full API reference: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ### Production API
 
-Our production API uses a cryptographically-secure 131K degree SRS:
-- Generated using OS entropy (OsRng)
-- Tau destroyed after generation (never saved to disk)
-- Single-party trusted setup (secure as long as generation was honest)
-- Supports circuits up to 131,072 rows
+Our production API uses a cryptographically-secure **2M degree SRS**:
+- **Capacity**: Supports circuits up to **2,097,152 rows**
+- **File size**: 64 MB (G1.bin) + 136 bytes (G2.bin)
+- **Memory usage**: Only ~23 KB for 2M row proofs (O(√T) efficiency)
+- **Generation**: OS entropy (OsRng) - cryptographically secure
+- **Security**: Tau destroyed after generation (never saved to disk)
+- **Setup type**: Single-party trusted setup (secure if generation was honest)
+- **Enables**: Production zkML (MobileNet, ResNet-18, DistilBERT)
 
 ### Local Development
 
@@ -255,14 +267,17 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 - See [SECURITY.md](SECURITY.md) for full security guidelines
 
 ### SRS Usage
-- **Production API**: Uses cryptographically-secure 131K degree SRS
+- **Production API**: Uses cryptographically-secure **2M degree SRS** (64 MB)
+- **Capacity**: Up to **2,097,152 rows** per circuit (Scale tier)
+- **Memory**: Only **~23 KB** for 2M row proofs (O(√T) advantage)
 - **Local Development**: Use `generate_dev_srs.sh` (max 4K degree, insecure)
 - **Never use dev SRS in production** - parameters are publicly known
 
 ### Rate Limits
 - Global: 10 requests/second per IP (burst: 30)
-- Monthly caps enforced per tier (Free: 500, Pro: 5K, Scale: 50K)
-- Circuit size limits enforced per tier (Free: 4K, Pro: 16K, Scale: 131K)
+- Monthly caps enforced per tier (Free: 500, Pro: 250, Scale: 100)
+- Circuit size limits enforced per tier (Free: 16K, Pro: 1M, Scale: 2M)
+- **Scale tier enables production zkML** (MobileNet, ResNet-18, DistilBERT)
 
 ---
 
