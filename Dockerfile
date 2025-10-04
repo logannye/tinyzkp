@@ -14,8 +14,8 @@ COPY Cargo.toml Cargo.lock ./
 # Copy source
 COPY src ./src
 
-# Build for release (without dev-srs)
-RUN cargo build --release --bin tinyzkp_api
+# Build for release (API + SRS generator)
+RUN cargo build --release --bin tinyzkp_api --bin generate_production_srs
 
 # Runtime image
 FROM debian:bookworm-slim
@@ -26,12 +26,12 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binaries from builder
 COPY --from=builder /app/target/release/tinyzkp_api /usr/local/bin/
+COPY --from=builder /app/target/release/generate_production_srs /usr/local/bin/
 
-# Copy SRS files to /tmp (will be moved to volume on startup)
-RUN mkdir -p /tmp/srs-init
-COPY srs/G1.bin srs/G2.bin /tmp/srs-init/
+# Create SRS directory (SRS will be generated directly on Railway)
+RUN mkdir -p /app/srs
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
