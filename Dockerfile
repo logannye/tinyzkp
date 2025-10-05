@@ -38,10 +38,10 @@ COPY --from=builder /app/target/release/generate_production_srs /usr/local/bin/
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Create non-root user
+# Create non-root user and SRS directory
 RUN useradd -m -u 1000 tinyzkp && \
     mkdir -p /app/srs && \
-    chown -R tinyzkp:tinyzkp /app /tmp/srs-init
+    chown -R tinyzkp:tinyzkp /app
 
 # Don't switch to tinyzkp user yet - entrypoint needs root to access volume
 # USER tinyzkp will be set in entrypoint after copying files
