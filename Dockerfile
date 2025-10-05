@@ -15,7 +15,8 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
 # Build for release (API + SRS generator)
-RUN cargo build --release --bin tinyzkp_api --bin generate_production_srs
+RUN cargo build --release --bin tinyzkp_api && \
+    cargo build --release --bin generate_production_srs
 
 # Runtime image
 FROM debian:bookworm-slim
@@ -30,8 +31,8 @@ WORKDIR /app
 COPY --from=builder /app/target/release/tinyzkp_api /usr/local/bin/
 COPY --from=builder /app/target/release/generate_production_srs /usr/local/bin/
 
-# Create SRS directory (SRS will be generated directly on Railway)
-RUN mkdir -p /app/srs
+# SRS will be generated directly on Railway volume (files too large for git)
+RUN mkdir -p /tmp/srs-init
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -40,7 +41,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Create non-root user
 RUN useradd -m -u 1000 tinyzkp && \
     mkdir -p /app/srs && \
-    chown -R tinyzkp:tinyzkp /app
+    chown -R tinyzkp:tinyzkp /app /tmp/srs-init
 
 # Don't switch to tinyzkp user yet - entrypoint needs root to access volume
 # USER tinyzkp will be set in entrypoint after copying files
