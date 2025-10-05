@@ -177,6 +177,17 @@ impl Kvs {
         let v: UpstashResp<i64> = serde_json::from_str(&text)?;
         Ok(v.result)
     }
+
+    async fn expire(&self, key: &str, seconds: u64) -> anyhow::Result<()> {
+        let url = format!("{}/expire/{}/{}", self.url, key, seconds);
+        let res = self.auth(self.http.post(&url)).send().await?;
+        let status = res.status();
+        let text = res.text().await.unwrap_or_default();
+        if !status.is_success() {
+            anyhow::bail!("kvs EXPIRE {} {} {}", key, status, text);
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Debug)]
@@ -644,7 +655,7 @@ async fn check_and_count(
     if used == 1 {
         let _ = st
             .kvs
-            .set_ex(&monthly_usage_key(&api_key), "1", end_of_month_ttl_secs())
+            .expire(&monthly_usage_key(&api_key), end_of_month_ttl_secs())
             .await;
     }
 
