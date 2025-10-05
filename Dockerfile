@@ -15,8 +15,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
 # Build for release (API + SRS generator)
-RUN cargo build --release --bin tinyzkp_api && \
-    cargo build --release --bin generate_production_srs
+RUN cargo build --release --bin tinyzkp_api --bin generate_production_srs
 
 # Runtime image
 FROM debian:bookworm-slim
@@ -27,12 +26,13 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy binaries from builder
+# Copy binaries from builder (API + SRS generator)
 COPY --from=builder /app/target/release/tinyzkp_api /usr/local/bin/
 COPY --from=builder /app/target/release/generate_production_srs /usr/local/bin/
 
-# SRS will be generated directly on Railway volume (files too large for git)
-RUN mkdir -p /tmp/srs-init
+# Note: SRS files excluded from git (>100MB). Generate on Railway:
+#   railway run generate_production_srs 4194304
+# No SRS files copied - will be generated directly on Railway volume
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
