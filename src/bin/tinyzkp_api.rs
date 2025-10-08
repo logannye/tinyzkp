@@ -7,8 +7,8 @@
 //! - POST /v1/domain/plan        { rows, b_blk?, zh_c? } -> N, b_blk_hint, omega_ok, mem_hint
 //! - POST /v1/auth/signup        { email, password } -> { user_id, api_key, tier, session_token }
 //! - POST /v1/auth/login         { email, password } -> { user_id, api_key, tier, session_token }
-//! - GET  /v1/me                 (Authorization: Bearer <session>) -> account info
-//! - POST /v1/keys/rotate        (Authorization: Bearer <session>) -> { api_key }
+//! - GET  /v1/me                 (X-Session-Token: <session>) -> account info
+//! - POST /v1/keys/rotate        (X-Session-Token: <session>) -> { api_key }
 //!
 //! Paid endpoints (require X-API-Key):
 //! - POST /v1/prove              ProveRequest -> ProveResponse (optionally returns proof as base64)
@@ -22,7 +22,7 @@
 //! - POST /v1/admin/srs/init                 -> initialize SRS (one-time, required before proving/verifying)
 //!
 //! Billing endpoints (Stripe):
-//! - POST /v1/billing/checkout   (Authorization: Bearer <session>) -> { checkout_url }
+//! - POST /v1/billing/checkout   (X-Session-Token: <session>) -> { checkout_url }
 //! - POST /v1/stripe/webhook     (Stripe calls)       -> { ok: true }
 //!
 //! Notes:
@@ -585,11 +585,18 @@ async fn new_session(kvs: &Kvs, user_id: &str, email: &str) -> anyhow::Result<St
 }
 
 async fn auth_session(kvs: &Kvs, headers: &HeaderMap) -> Result<(String, String), (StatusCode, String)> {
+    // ✅ Check for X-Session-Token header (new frontend) OR Authorization: Bearer (legacy/fallback)
     let token = headers
-        .get("authorization")
+        .get("x-session-token")
         .and_then(|h| h.to_str().ok())
-        .and_then(|s| s.strip_prefix("Bearer ").map(|x| x.to_string()))
-        .ok_or((StatusCode::UNAUTHORIZED, "missing Bearer token".into()))?;
+        .map(|s| s.to_string())
+        .or_else(|| {
+            headers
+                .get("authorization")
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| s.strip_prefix("Bearer ").map(|x| x.to_string()))
+        })
+        .ok_or((StatusCode::UNAUTHORIZED, "missing session token".into()))?;
     let v = kvs
         .get(&format!("tinyzkp:sess:{token}"))
         .await
