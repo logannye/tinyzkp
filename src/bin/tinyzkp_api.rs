@@ -1885,6 +1885,7 @@ async fn main() -> anyhow::Result<()> {
                 axum::http::header::CONTENT_TYPE,
                 axum::http::HeaderName::from_static("x-api-key"),
                 axum::http::HeaderName::from_static("x-admin-token"),
+                axum::http::HeaderName::from_static("x-session-token"),  // ✅ ADDED for authenticated dashboard/billing requests
             ])
             .allow_credentials(true)
             .max_age(std::time::Duration::from_secs(3600))
