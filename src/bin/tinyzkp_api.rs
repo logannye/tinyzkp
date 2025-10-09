@@ -1967,8 +1967,10 @@ async fn main() -> anyhow::Result<()> {
             println!("  G1: {}", g1_path);
             println!("  G2: {}", g2_path);
 
-            match std::panic::catch_unwind(|| {
-                myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_rows)
+            let g1_path_clone = g1_path.clone();
+            let max_rows_clone = max_rows;
+            match std::panic::catch_unwind(move || {
+                myzkp::srs_setup::load_and_validate_g1_srs(&g1_path_clone, max_rows_clone)
             }) {
                 Ok(Ok(g1_powers)) => {
                     match myzkp::srs_setup::load_and_validate_g2_srs(&g2_path) {
