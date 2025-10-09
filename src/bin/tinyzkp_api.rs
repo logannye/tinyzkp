@@ -1955,11 +1955,65 @@ async fn main() -> anyhow::Result<()> {
 
     println!("tinyzkp API listening on http://{addr}");
     println!();
-    println!("IMPORTANT: Initialize SRS before proving/verifying:");
-    println!("  curl -X POST http://{addr}/v1/admin/srs/init \\");
-    println!("    -H \"X-Admin-Token: $ADMIN_TOKEN\" \\");
-    println!("    -H \"Content-Type: application/json\" \\");
-    println!("    -d '{{\"max_degree\": 16384, \"validate_pairing\": false}}'");
+
+    // ✅ AUTO-INITIALIZE SRS: Load production SRS from files on startup
+    #[cfg(not(feature = "dev-srs"))]
+    {
+        if let (Ok(g1_path), Ok(g2_path)) = (
+            std::env::var("SSZKP_SRS_G1_PATH"),
+            std::env::var("SSZKP_SRS_G2_PATH"),
+        ) {
+            println!("🔄 Auto-initializing production SRS from files...");
+            println!("  G1: {}", g1_path);
+            println!("  G2: {}", g2_path);
+
+            match std::panic::catch_unwind(|| {
+                myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_rows)
+            }) {
+                Ok(Ok(g1_powers)) => {
+                    match myzkp::srs_setup::load_and_validate_g2_srs(&g2_path) {
+                        Ok(tau_g2) => {
+                            myzkp::pcs::load_srs_g1(&g1_powers);
+                            myzkp::pcs::load_srs_g2(tau_g2);
+                            println!("✅ Production SRS loaded successfully (max_degree: {})", max_rows);
+                            println!("✅ API is ready for proof generation!");
+                        }
+                        Err(e) => {
+                            println!("⚠️  Failed to load G2 SRS: {}", e);
+                            println!("   API will start, but SRS must be manually initialized");
+                            println!("   curl -X POST http://{addr}/v1/admin/srs/init \\");
+                            println!("     -H \"X-Admin-Token: $ADMIN_TOKEN\" \\");
+                            println!("     -H \"Content-Type: application/json\" \\");
+                            println!("     -d '{{\"max_degree\": {max_rows}, \"mode\": \"production\"}}'");
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    println!("⚠️  Failed to load G1 SRS: {}", e);
+                    println!("   API will start, but SRS must be manually initialized");
+                    println!("   curl -X POST http://{addr}/v1/admin/srs/init \\");
+                    println!("     -H \"X-Admin-Token: $ADMIN_TOKEN\" \\");
+                    println!("     -H \"Content-Type: application/json\" \\");
+                    println!("     -d '{{\"max_degree\": {max_rows}, \"mode\": \"production\"}}'");
+                }
+                Err(_) => {
+                    println!("⚠️  SRS loading panicked (likely already initialized)");
+                    println!("   API will continue with existing SRS state");
+                }
+            }
+        } else {
+            println!("⚠️  SSZKP_SRS_G1_PATH or SSZKP_SRS_G2_PATH not set");
+            println!("   SRS must be manually initialized:");
+            println!("   curl -X POST http://{addr}/v1/admin/srs/init \\");
+            println!("     -H \"X-Admin-Token: $ADMIN_TOKEN\" \\");
+            println!("     -H \"Content-Type: application/json\" \\");
+            println!("     -d '{{\"max_degree\": 16384, \"mode\": \"dev\"}}'");
+        }
+    }
+
+    #[cfg(feature = "dev-srs")]
+    println!("ℹ️  Dev SRS mode - will generate 16K SRS on first use");
+
     println!();
 
     let listener = TcpListener::bind(addr).await?;

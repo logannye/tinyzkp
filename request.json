@@ -1,0 +1,10 @@
+{
+  "air": {"k": 3},
+  "domain": {"rows": 8, "b_blk": 2, "zh_c": "1"},
+  "pcs": {"basis_wires": "eval"},
+  "witness": {
+    "format": "json_rows",
+    "rows": [[1,2,3],[2,4,6],[3,6,9],[4,8,12],[5,10,15],[6,12,18],[7,14,21],[8,16,24]]
+  },
+  "return_proof": true
+}
