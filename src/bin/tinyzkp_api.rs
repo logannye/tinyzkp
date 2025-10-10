@@ -35,7 +35,7 @@
 #![allow(unused_variables)]
 
 use std::net::SocketAddr;
-use std::sync::OnceLock;
+use std::sync::{OnceLock, Mutex};
 
 use anyhow::{self};
 use ark_ff::FftField; // for get_root_of_unity
@@ -88,65 +88,80 @@ use rand::rngs::OsRng;
 /// Global flag tracking whether SRS has been initialized.
 static SRS_INITIALIZED: OnceLock<bool> = OnceLock::new();
 
-/// Attempt to lazily initialize SRS from production files if not already loaded.
-fn try_lazy_init_srs(max_rows: usize) -> Result<(), String> {
-    // Check if already initialized
+/// Mutex to ensure only one thread loads the SRS at a time.
+static SRS_INIT_LOCK: Mutex<()> = Mutex::new(());
+
+/// Lazy initialization: load SRS from files if not already loaded.
+/// This is called automatically on first proof/verify request.
+fn ensure_srs_loaded(max_degree: usize) -> Result<(), String> {
+    // Fast path: if already initialized, return immediately
     if SRS_INITIALIZED.get().is_some() {
         return Ok(());
     }
 
+    // Slow path: acquire lock and initialize
+    let _guard = SRS_INIT_LOCK.lock().unwrap();
+
+    // Double-check after acquiring lock (another thread might have initialized)
+    if SRS_INITIALIZED.get().is_some() {
+        return Ok(());
+    }
+
+    eprintln!("⏳ Lazy-loading SRS on first request (this may take 15-30 seconds)...");
+
     #[cfg(not(feature = "dev-srs"))]
     {
-        // Try to load from environment-configured paths
         let g1_path = std::env::var("SSZKP_SRS_G1_PATH")
-            .map_err(|_| "SSZKP_SRS_G1_PATH not set".to_string())?;
+            .map_err(|_| "SSZKP_SRS_G1_PATH not set in environment".to_string())?;
         let g2_path = std::env::var("SSZKP_SRS_G2_PATH")
-            .map_err(|_| "SSZKP_SRS_G2_PATH not set".to_string())?;
+            .map_err(|_| "SSZKP_SRS_G2_PATH not set in environment".to_string())?;
 
-        eprintln!("🔄 Lazy-initializing SRS from files...");
-        eprintln!("  G1: {}", g1_path);
-        eprintln!("  G2: {}", g2_path);
+        eprintln!("  Loading from:");
+        eprintln!("    G1: {}", g1_path);
+        eprintln!("    G2: {}", g2_path);
 
-        let g1_powers = myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_rows)
-            .map_err(|e| format!("Load G1 SRS: {}", e))?;
+        let g1_powers = myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_degree)
+            .map_err(|e| format!("Failed to load G1 SRS: {}", e))?;
 
         let tau_g2 = myzkp::srs_setup::load_and_validate_g2_srs(&g2_path)
-            .map_err(|e| format!("Load G2 SRS: {}", e))?;
+            .map_err(|e| format!("Failed to load G2 SRS: {}", e))?;
 
         myzkp::pcs::load_srs_g1(&g1_powers);
         myzkp::pcs::load_srs_g2(tau_g2);
 
-        SRS_INITIALIZED.set(true).ok();
-        eprintln!("✅ SRS lazy-initialized successfully (max_degree: {})", max_rows);
-        Ok(())
+        eprintln!("✓ SRS loaded successfully (degree={})", max_degree);
     }
 
     #[cfg(feature = "dev-srs")]
     {
-        Err("Dev SRS mode - cannot lazy init. Use POST /v1/admin/srs/init".to_string())
+        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        eprintln!("⚠️  WARNING: Using DEVELOPMENT SRS (NOT FOR PRODUCTION!)");
+        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        let (g1_powers, tau_g2) = myzkp::srs_setup::generate_dev_srs(max_degree);
+        myzkp::pcs::load_srs_g1(&g1_powers);
+        myzkp::pcs::load_srs_g2(tau_g2);
+
+        eprintln!("✓ Dev SRS generated (degree={})", max_degree);
     }
+
+    SRS_INITIALIZED.set(true).ok();
+
+    let g1_dig = myzkp::pcs::srs_g1_digest();
+    let g2_dig = myzkp::pcs::srs_g2_digest();
+
+    eprintln!("  G1 digest: {:02x?}", &g1_dig[..8]);
+    eprintln!("  G2 digest: {:02x?}", &g2_dig[..8]);
+    eprintln!("✓ API ready for proof generation");
+
+    Ok(())
 }
 
 /// Middleware: ensure SRS is initialized before handling prove/verify requests.
-/// Attempts lazy initialization on first use.
-async fn require_srs() -> Result<(), (StatusCode, String)> {
-    if SRS_INITIALIZED.get().is_none() {
-        // Try lazy initialization from environment
-        let max_rows = std::env::var("TINYZKP_MAX_ROWS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(4_194_304);
-
-        match try_lazy_init_srs(max_rows) {
-            Ok(()) => Ok(()),
-            Err(e) => Err((
-                StatusCode::SERVICE_UNAVAILABLE,
-                format!("SRS not initialized: {}. Admin must call POST /v1/admin/srs/init", e),
-            )),
-        }
-    } else {
-        Ok(())
-    }
+/// Now triggers lazy loading if not already initialized.
+async fn require_srs(max_degree: usize) -> Result<(), (StatusCode, String)> {
+    ensure_srs_loaded(max_degree)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("SRS initialization failed: {}", e)))
 }
 
 // ------------------------------ KVS (Upstash) ------------------------------
@@ -269,6 +284,8 @@ fn end_of_month_ttl_secs() -> u64 {
 #[derive(Serialize)]
 struct Health {
     status: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    srs_initialized: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -729,7 +746,10 @@ async fn check_and_count(
 // ------------------------------ Public Handlers ------------------------------
 
 async fn health() -> impl IntoResponse {
-    Json(Health { status: "ok" })
+    Json(Health { 
+        status: "ok",
+        srs_initialized: SRS_INITIALIZED.get().copied(),
+    })
 }
 
 async fn version() -> impl IntoResponse {
@@ -1432,7 +1452,7 @@ async fn prove_checked(
     headers: HeaderMap,
     req: Json<ProveReq>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    require_srs().await?;
+    require_srs(st.max_rows).await?;
     prove(st, headers, req).await
 }
 
@@ -1441,7 +1461,7 @@ async fn verify_checked(
     headers: HeaderMap,
     mp: Multipart,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    require_srs().await?;
+    require_srs(st.max_rows).await?;
     verify(st, headers, mp).await
 }
 
@@ -1877,15 +1897,15 @@ async fn main() -> anyhow::Result<()> {
     let free_cap = std::env::var("TINYZKP_FREE_MONTHLY_CAP")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(50);
+        .unwrap_or(250);
     let pro_cap = std::env::var("TINYZKP_PRO_MONTHLY_CAP")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(250);
+        .unwrap_or(500);
     let scale_cap = std::env::var("TINYZKP_SCALE_MONTHLY_CAP")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(500);
+        .unwrap_or(250);
 
     let max_rows = std::env::var("TINYZKP_MAX_ROWS")
         .ok()
@@ -1902,7 +1922,7 @@ async fn main() -> anyhow::Result<()> {
     let scale_max_rows = std::env::var("TINYZKP_SCALE_MAX_ROWS")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(2_097_152);
+        .unwrap_or(4_194_304);
 
     let allow_dev_srs = std::env::var("TINYZKP_ALLOW_DEV_SRS")
         .map(|s| s == "true")
@@ -2005,7 +2025,13 @@ async fn main() -> anyhow::Result<()> {
 
     println!("tinyzkp API listening on http://{addr}");
     println!();
-    println!("IMPORTANT: Initialize SRS before proving/verifying:");
+    println!("SRS Initialization: Lazy loading enabled");
+    println!("  - SRS will auto-load on first proof/verify request");
+    println!("  - Max degree: {} ({}K rows)", max_rows, max_rows / 1024);
+    println!("  - First request will take 15-30 seconds to load SRS");
+    println!("  - Subsequent requests will be fast");
+    println!();
+    println!("Optional: Manual initialization via admin endpoint:");
     println!("  curl -X POST http://{addr}/v1/admin/srs/init \\");
     println!("    -H \"X-Admin-Token: $ADMIN_TOKEN\" \\");
     println!("    -H \"Content-Type: application/json\" \\");
