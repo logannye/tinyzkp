@@ -88,15 +88,65 @@ use rand::rngs::OsRng;
 /// Global flag tracking whether SRS has been initialized.
 static SRS_INITIALIZED: OnceLock<bool> = OnceLock::new();
 
+/// Attempt to lazily initialize SRS from production files if not already loaded.
+fn try_lazy_init_srs(max_rows: usize) -> Result<(), String> {
+    // Check if already initialized
+    if SRS_INITIALIZED.get().is_some() {
+        return Ok(());
+    }
+
+    #[cfg(not(feature = "dev-srs"))]
+    {
+        // Try to load from environment-configured paths
+        let g1_path = std::env::var("SSZKP_SRS_G1_PATH")
+            .map_err(|_| "SSZKP_SRS_G1_PATH not set".to_string())?;
+        let g2_path = std::env::var("SSZKP_SRS_G2_PATH")
+            .map_err(|_| "SSZKP_SRS_G2_PATH not set".to_string())?;
+
+        eprintln!("🔄 Lazy-initializing SRS from files...");
+        eprintln!("  G1: {}", g1_path);
+        eprintln!("  G2: {}", g2_path);
+
+        let g1_powers = myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_rows)
+            .map_err(|e| format!("Load G1 SRS: {}", e))?;
+
+        let tau_g2 = myzkp::srs_setup::load_and_validate_g2_srs(&g2_path)
+            .map_err(|e| format!("Load G2 SRS: {}", e))?;
+
+        myzkp::pcs::load_srs_g1(&g1_powers);
+        myzkp::pcs::load_srs_g2(tau_g2);
+
+        SRS_INITIALIZED.set(true).ok();
+        eprintln!("✅ SRS lazy-initialized successfully (max_degree: {})", max_rows);
+        Ok(())
+    }
+
+    #[cfg(feature = "dev-srs")]
+    {
+        Err("Dev SRS mode - cannot lazy init. Use POST /v1/admin/srs/init".to_string())
+    }
+}
+
 /// Middleware: ensure SRS is initialized before handling prove/verify requests.
+/// Attempts lazy initialization on first use.
 async fn require_srs() -> Result<(), (StatusCode, String)> {
     if SRS_INITIALIZED.get().is_none() {
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            "SRS not initialized. Admin must call POST /v1/admin/srs/init first".into(),
-        ));
+        // Try lazy initialization from environment
+        let max_rows = std::env::var("TINYZKP_MAX_ROWS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(4_194_304);
+
+        match try_lazy_init_srs(max_rows) {
+            Ok(()) => Ok(()),
+            Err(e) => Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                format!("SRS not initialized: {}. Admin must call POST /v1/admin/srs/init", e),
+            )),
+        }
+    } else {
+        Ok(())
     }
-    Ok(())
 }
 
 // ------------------------------ KVS (Upstash) ------------------------------
