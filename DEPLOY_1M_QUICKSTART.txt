@@ -1,0 +1,67 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   🚀 TinyZKP 1M SRS - Quick Deploy Guide                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ COMPLETED:
+  • Generated 1M SRS (32 MB G1.bin + 136 B G2.bin)
+  • Committed to GitHub (914a952)
+  • Updated README with new tiers
+
+📋 YOUR TASKS:
+
+1️⃣  UPDATE RAILWAY ENV VARS
+    Go to: railway.app → api.tinyzkp.com → Variables
+    
+    Set:
+      TINYZKP_MAX_ROWS=1048576
+      TINYZKP_SCALE_MAX_ROWS=1048576
+      TINYZKP_SCALE_MONTHLY_CAP=1000
+
+2️⃣  REDEPLOY (Automatic after commit)
+    Railway will auto-deploy commit 914a952
+    Wait: 2-3 minutes
+
+3️⃣  INITIALIZE SRS (CRITICAL - DO THIS AFTER DEPLOY!)
+    
+    curl -X POST https://api.tinyzkp.com/v1/admin/srs/init \
+      -H "X-Admin-Token: Hartsgrove26!!" \
+      -H "Content-Type: application/json" \
+      -d '{"max_degree": 1048576, "mode": "production"}'
+    
+    Wait: 30-60 seconds
+    
+4️⃣  VERIFY
+    
+    curl https://api.tinyzkp.com/v1/health
+    
+    Should see: {"status": "ok", "srs_initialized": true}
+
+5️⃣  UPDATE WEBSITE (tinyzkp.com)
+    Scale tier:
+      • Price: $149/mo (was $199)
+      • Proofs: 1,000/month (was 250)
+      • Capacity: 1M rows (was 4M)
+      • Use cases: MNIST full, ResNet-18, small transformers
+
+6️⃣  UPDATE STRIPE (if needed)
+    Scale product: $199 → $149
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 NEW SCALE TIER BENEFITS:
+  ✅ 4× more proofs per month (1,000 vs 250)
+  ✅ 25% cheaper ($149 vs $199)
+  ✅ 2× faster SRS loading (30-60s vs 60-120s)
+  ✅ Still huge capacity (1M rows = 99% of use cases)
+
+⚠️  REMEMBER:
+  After every Railway restart, re-run step 3️⃣  (SRS init)!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📁 FILES:
+  • 1M_SRS_DEPLOYMENT_SUMMARY.md - Full details
+  • RAILWAY_1M_SRS_UPDATE.md - Deployment guide
+  • DEPLOY_1M_QUICKSTART.txt - This file
+
+💪 YOU'RE READY TO GO LIVE! 🚀

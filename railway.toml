@@ -3,6 +3,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "bash -c '/usr/local/bin/entrypoint.sh & sleep 15 && curl -X POST http://localhost:8080/v1/admin/srs/init -H \"X-Admin-Token: $TINYZKP_ADMIN_TOKEN\" -H \"Content-Type: application/json\" -d \"{\\\"max_degree\\\": 2097152, \\\"mode\\\": \\\"production\\\"}\" --max-time 300 && echo \"SRS initialized!\" && wait'"
+startCommand = "/usr/local/bin/entrypoint.sh"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

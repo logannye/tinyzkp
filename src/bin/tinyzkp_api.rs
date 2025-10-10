@@ -85,83 +85,118 @@ use rand::rngs::OsRng;
 // SRS Initialization State
 // ============================================================================
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 /// Global flag tracking whether SRS has been initialized.
 static SRS_INITIALIZED: OnceLock<bool> = OnceLock::new();
 
-/// Mutex to ensure only one thread loads the SRS at a time.
+/// Flag tracking whether SRS loading is in progress.
+static SRS_LOADING: AtomicBool = AtomicBool::new(false);
+
+/// Mutex to ensure only one thread starts the loading task.
 static SRS_INIT_LOCK: Mutex<()> = Mutex::new(());
 
-/// Lazy initialization: load SRS from files if not already loaded.
-/// This is called automatically on first proof/verify request.
-fn ensure_srs_loaded(max_degree: usize) -> Result<(), String> {
-    // Fast path: if already initialized, return immediately
-    if SRS_INITIALIZED.get().is_some() {
-        return Ok(());
+/// Background task: load SRS from files without blocking HTTP requests.
+/// This runs in a separate tokio task, allowing immediate 503 responses.
+fn start_srs_loading_background(max_degree: usize) {
+    // Fast path: if already initialized or loading, do nothing
+    if SRS_INITIALIZED.get().is_some() || SRS_LOADING.load(Ordering::Relaxed) {
+        return;
     }
 
-    // Slow path: acquire lock and initialize
+    // Acquire lock to ensure only one thread starts loading
     let _guard = SRS_INIT_LOCK.lock().unwrap();
 
-    // Double-check after acquiring lock (another thread might have initialized)
-    if SRS_INITIALIZED.get().is_some() {
-        return Ok(());
+    // Double-check after acquiring lock
+    if SRS_INITIALIZED.get().is_some() || SRS_LOADING.load(Ordering::Relaxed) {
+        return;
     }
 
-    eprintln!("⏳ Lazy-loading SRS on first request (this may take 15-30 seconds)...");
+    // Mark as loading
+    SRS_LOADING.store(true, Ordering::Relaxed);
 
-    #[cfg(not(feature = "dev-srs"))]
-    {
-        let g1_path = std::env::var("SSZKP_SRS_G1_PATH")
-            .map_err(|_| "SSZKP_SRS_G1_PATH not set in environment".to_string())?;
-        let g2_path = std::env::var("SSZKP_SRS_G2_PATH")
-            .map_err(|_| "SSZKP_SRS_G2_PATH not set in environment".to_string())?;
+    // Spawn background task
+    tokio::spawn(async move {
+        eprintln!("⏳ Starting background SRS loading (16MB, ~30 seconds)...");
+        
+        let result = std::panic::catch_unwind(|| {
+            #[cfg(not(feature = "dev-srs"))]
+            {
+                let g1_path = std::env::var("SSZKP_SRS_G1_PATH")
+                    .expect("SSZKP_SRS_G1_PATH not set");
+                let g2_path = std::env::var("SSZKP_SRS_G2_PATH")
+                    .expect("SSZKP_SRS_G2_PATH not set");
 
-        eprintln!("  Loading from:");
-        eprintln!("    G1: {}", g1_path);
-        eprintln!("    G2: {}", g2_path);
+                eprintln!("  Loading from:");
+                eprintln!("    G1: {}", g1_path);
+                eprintln!("    G2: {}", g2_path);
 
-        let g1_powers = myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_degree)
-            .map_err(|e| format!("Failed to load G1 SRS: {}", e))?;
+                let g1_powers = myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_degree)
+                    .expect("Failed to load G1 SRS");
 
-        let tau_g2 = myzkp::srs_setup::load_and_validate_g2_srs(&g2_path)
-            .map_err(|e| format!("Failed to load G2 SRS: {}", e))?;
+                let tau_g2 = myzkp::srs_setup::load_and_validate_g2_srs(&g2_path)
+                    .expect("Failed to load G2 SRS");
 
-        myzkp::pcs::load_srs_g1(&g1_powers);
-        myzkp::pcs::load_srs_g2(tau_g2);
+                myzkp::pcs::load_srs_g1(&g1_powers);
+                myzkp::pcs::load_srs_g2(tau_g2);
 
-        eprintln!("✓ SRS loaded successfully (degree={})", max_degree);
-    }
+                eprintln!("✓ SRS loaded successfully (degree={})", max_degree);
+            }
 
-    #[cfg(feature = "dev-srs")]
-    {
-        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        eprintln!("⚠️  WARNING: Using DEVELOPMENT SRS (NOT FOR PRODUCTION!)");
-        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            #[cfg(feature = "dev-srs")]
+            {
+                eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                eprintln!("⚠️  WARNING: Using DEVELOPMENT SRS (NOT FOR PRODUCTION!)");
+                eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        let (g1_powers, tau_g2) = myzkp::srs_setup::generate_dev_srs(max_degree);
-        myzkp::pcs::load_srs_g1(&g1_powers);
-        myzkp::pcs::load_srs_g2(tau_g2);
+                let (g1_powers, tau_g2) = myzkp::srs_setup::generate_dev_srs(max_degree);
+                myzkp::pcs::load_srs_g1(&g1_powers);
+                myzkp::pcs::load_srs_g2(tau_g2);
 
-        eprintln!("✓ Dev SRS generated (degree={})", max_degree);
-    }
+                eprintln!("✓ Dev SRS generated (degree={})", max_degree);
+            }
 
-    SRS_INITIALIZED.set(true).ok();
+            let g1_dig = myzkp::pcs::srs_g1_digest();
+            let g2_dig = myzkp::pcs::srs_g2_digest();
 
-    let g1_dig = myzkp::pcs::srs_g1_digest();
-    let g2_dig = myzkp::pcs::srs_g2_digest();
+            eprintln!("  G1 digest: {:02x?}", &g1_dig[..8]);
+            eprintln!("  G2 digest: {:02x?}", &g2_dig[..8]);
+        });
 
-    eprintln!("  G1 digest: {:02x?}", &g1_dig[..8]);
-    eprintln!("  G2 digest: {:02x?}", &g2_dig[..8]);
-    eprintln!("✓ API ready for proof generation");
+        match result {
+            Ok(_) => {
+                SRS_INITIALIZED.set(true).ok();
+                SRS_LOADING.store(false, Ordering::Relaxed);
+                eprintln!("✓ API ready for proof generation");
+            }
+            Err(e) => {
+                SRS_LOADING.store(false, Ordering::Relaxed);
+                eprintln!("❌ SRS loading failed: {:?}", e);
+            }
+        }
+    });
 
-    Ok(())
+    eprintln!("🚀 Background SRS loading started");
 }
 
 /// Middleware: ensure SRS is initialized before handling prove/verify requests.
-/// Now triggers lazy loading if not already initialized.
+/// Returns 503 if loading is in progress, triggers background loading if not started.
 async fn require_srs(max_degree: usize) -> Result<(), (StatusCode, String)> {
-    ensure_srs_loaded(max_degree)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("SRS initialization failed: {}", e)))
+    // Fast path: if initialized, proceed immediately
+    if SRS_INITIALIZED.get().is_some() {
+        return Ok(());
+    }
+
+    // If not loading yet, start background loading
+    if !SRS_LOADING.load(Ordering::Relaxed) {
+        start_srs_loading_background(max_degree);
+    }
+
+    // Return 503 with helpful message
+    Err((
+        StatusCode::SERVICE_UNAVAILABLE,
+        "SRS is loading in background (~30 seconds). Please retry in 30 seconds. Check /v1/health for status.".to_string()
+    ))
 }
 
 // ------------------------------ KVS (Upstash) ------------------------------
@@ -286,6 +321,8 @@ struct Health {
     status: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     srs_initialized: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    srs_loading: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -746,9 +783,11 @@ async fn check_and_count(
 // ------------------------------ Public Handlers ------------------------------
 
 async fn health() -> impl IntoResponse {
+    let loading = SRS_LOADING.load(Ordering::Relaxed);
     Json(Health { 
         status: "ok",
         srs_initialized: SRS_INITIALIZED.get().copied(),
+        srs_loading: if loading { Some(true) } else { None },
     })
 }
 
@@ -2025,11 +2064,12 @@ async fn main() -> anyhow::Result<()> {
 
     println!("tinyzkp API listening on http://{addr}");
     println!();
-    println!("SRS Initialization: Lazy loading enabled");
-    println!("  - SRS will auto-load on first proof/verify request");
-    println!("  - Max degree: {} ({}K rows)", max_rows, max_rows / 1024);
-    println!("  - First request will take 15-30 seconds to load SRS");
-    println!("  - Subsequent requests will be fast");
+    println!("SRS Initialization: Background loading enabled");
+    println!("  - SRS auto-loads on first proof/verify request (no HTTP timeout!)");
+    println!("  - Max degree: {} ({}K rows, 16MB)", max_rows, max_rows / 1024);
+    println!("  - First request returns 503 immediately, loading happens in background (~30s)");
+    println!("  - Clients should retry after 30 seconds");
+    println!("  - Check /v1/health for loading status");
     println!();
     println!("Optional: Manual initialization via admin endpoint:");
     println!("  curl -X POST http://{addr}/v1/admin/srs/init \\");
