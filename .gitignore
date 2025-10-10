@@ -36,9 +36,8 @@ time_*.err
 # Test artifacts
 selectors_test.csv
 
-# Large production SRS files (>100MB, exceeds GitHub limit)
-srs/G1.bin
-srs/G2.bin
-
 # Keep directory structure
 !srs/.gitkeep
+
+# Note: 2M SRS files (64MB) are now committed to git
+# They fit under GitHub's 100MB limit
