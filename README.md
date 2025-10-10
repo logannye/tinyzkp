@@ -11,9 +11,9 @@ TinyZKP is a high-performance ZKP prover/verifier that uses only O(√T) memory 
 
 ## 🌟 Features
 
-- **Sublinear Space**: Proves traces of 1M rows using only ~1,024 row memory (1,000× less!)
-- **Production Capacity**: 1M degree SRS (supports circuits up to 1,048,576 rows)
-- **Production zkML**: Enable MNIST, small CNNs, MobileNet inference proofs
+- **Sublinear Space**: Proves traces of 512K rows using only ~724 row memory (700× less!)
+- **Production Capacity**: 512K degree SRS (supports circuits up to 524,288 rows)
+- **Production zkML**: Enable MNIST, CIFAR-10 CNNs, small transformer models
 - **Production API**: REST API with tiered pricing (Free/Pro/Scale)
 - **Secure**: HMAC webhook verification, rate limiting, CORS protection
 - **Fast**: Streaming Blocked-IFFT, optimized BN254 operations
@@ -29,14 +29,14 @@ TinyZKP is a high-performance ZKP prover/verifier that uses only O(√T) memory 
 
 ## 🎯 Why TinyZKP?
 
-**Traditional ZKP provers** require O(T) memory - proving a 1M row circuit needs 1M rows in memory (~32 MB).
+**Traditional ZKP provers** require O(T) memory - proving a 512K row circuit needs 512K rows in memory (~16 MB).
 
-**TinyZKP** uses streaming algorithms to prove with only O(√T) memory - proving a 1M row circuit needs just ~1,024 rows in memory (~16 KB).
+**TinyZKP** uses streaming algorithms to prove with only O(√T) memory - proving a 512K row circuit needs just ~724 rows in memory (~12 KB).
 
 **Result**: 
-- 💾 **2,000× less memory** for large circuits (16 KB vs 32 MB)
+- 💾 **1,300× less memory** for large circuits (12 KB vs 16 MB)
 - ⚡ **Faster proofs** on commodity hardware  
-- 🧠 **zkML-ready** - MNIST, small CNNs, MobileNet
+- 🧠 **zkML-ready** - MNIST, CIFAR-10 CNNs, small transformers
 - 🌐 **REST API** - no local setup required
 - 💰 **Pay as you grow** - free tier to start
 
@@ -114,29 +114,29 @@ Our hosted API is available at `https://api.tinyzkp.com`
 | Tier | Price | Monthly Proofs | Max Circuit Size | Best For |
 |------|-------|----------------|------------------|----------|
 | **Free** | $0/mo | 250 | 32,768 rows | Learning, prototyping |
-| **Pro** | $39/mo | 500 | 262,144 rows | Production dev use |
-| **Scale** | $149/mo | 1,000 | 1,048,576 rows (1M) | Enterprise zkML |
+| **Pro** | $39/mo | 1,000 | 262,144 rows | Production use |
+| **Scale** | $99/mo | 2,500 | 524,288 rows (512K) | High-volume zkML |
 
 ### 📊 What You Can Prove
 
 | Tier | Circuit Size | Example Use Cases |
 |------|--------------|-------------------|
 | **Free (32K rows)** | 32,768 | MNIST-class models, basic constraint systems, small ML |
-| **Pro (262K rows)** | 262,144 | MobileNet (quantized), CIFAR-10 CNNs, medium ML models |
-| **Scale (1M rows)** | 1,048,576 | **MNIST full, ResNet-18, small transformers** - production zkML |
+| **Pro (256K rows)** | 262,144 | MobileNet (quantized), CIFAR-10 CNNs, medium ML models |
+| **Scale (512K rows)** | 524,288 | **MNIST full, image classification, small transformers** - production zkML |
 
 ### Rate Limits
 
 - **Global**: 10 requests/second per IP (burst: 30)
 - **Monthly caps**: Enforced per tier (see table above)
 - **Circuit size**: Enforced per tier
-- **Proof generation**: Up to 1M rows (Scale tier)
+- **Proof generation**: Up to 512K rows (Scale tier)
 
 ### 💳 Upgrading Your Account
 
 1. Sign up for free tier (250 proofs/month, 32K rows)
 2. Visit https://tinyzkp.com to upgrade
-3. Choose Pro ($39/mo, 262K rows) or Scale ($149/mo, 1M rows)
+3. Choose Pro ($39/mo, 1K proofs, 256K rows) or Scale ($99/mo, 2.5K proofs, 512K rows)
 4. Complete payment via Stripe
 5. Your account is upgraded instantly
 6. Same API key, new limits!
@@ -187,14 +187,14 @@ Full API reference: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ### Production API
 
-Our production API uses a cryptographically-secure **1M degree SRS**:
-- **Capacity**: Supports circuits up to **1,048,576 rows**
-- **File size**: 32 MB (G1.bin) + 136 bytes (G2.bin)
-- **Memory usage**: Only ~16 KB for 1M row proofs (O(√T) efficiency)
+Our production API uses a cryptographically-secure **512K degree SRS**:
+- **Capacity**: Supports circuits up to **524,288 rows**
+- **File size**: 16 MB (G1.bin) + 136 bytes (G2.bin)
+- **Memory usage**: Only ~12 KB for 512K row proofs (O(√T) efficiency)
 - **Generation**: OS entropy (OsRng) - cryptographically secure
 - **Security**: Tau destroyed after generation (never saved to disk)
 - **Setup type**: Single-party trusted setup (secure if generation was honest)
-- **Enables**: Production zkML (MNIST full, ResNet-18, small transformers)
+- **Enables**: Production zkML (MNIST full, image classification, small transformers)
 
 ### Local Development
 
@@ -267,17 +267,17 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 - See [SECURITY.md](SECURITY.md) for full security guidelines
 
 ### SRS Usage
-- **Production API**: Uses cryptographically-secure **1M degree SRS** (32 MB)
-- **Capacity**: Up to **1,048,576 rows** per circuit (Scale tier)
-- **Memory**: Only **~16 KB** for 1M row proofs (O(√T) advantage)
+- **Production API**: Uses cryptographically-secure **512K degree SRS** (16 MB)
+- **Capacity**: Up to **524,288 rows** per circuit (Scale tier)
+- **Memory**: Only **~12 KB** for 512K row proofs (O(√T) advantage)
 - **Local Development**: Use `generate_dev_srs.sh` (max 4K degree, insecure)
 - **Never use dev SRS in production** - parameters are publicly known
 
 ### Rate Limits
 - Global: 10 requests/second per IP (burst: 30)
-- Monthly caps enforced per tier (Free: 250, Pro: 500, Scale: 1,000)
-- Circuit size limits enforced per tier (Free: 32K, Pro: 262K, Scale: 1M)
-- **Scale tier enables production zkML** (MNIST full, ResNet-18, small transformers)
+- Monthly caps enforced per tier (Free: 250, Pro: 1,000, Scale: 2,500)
+- Circuit size limits enforced per tier (Free: 32K, Pro: 256K, Scale: 512K)
+- **Scale tier enables production zkML** (MNIST full, image classification, small transformers)
 
 ---
 
