@@ -135,7 +135,7 @@ async fn require_srs() -> Result<(), (StatusCode, String)> {
         let max_rows = std::env::var("TINYZKP_MAX_ROWS")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(2_097_152);
+            .unwrap_or(4_194_304);
 
         match try_lazy_init_srs(max_rows) {
             Ok(()) => Ok(()),
@@ -1877,20 +1877,20 @@ async fn main() -> anyhow::Result<()> {
     let free_cap = std::env::var("TINYZKP_FREE_MONTHLY_CAP")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(250);
+        .unwrap_or(50);
     let pro_cap = std::env::var("TINYZKP_PRO_MONTHLY_CAP")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(500);
+        .unwrap_or(250);
     let scale_cap = std::env::var("TINYZKP_SCALE_MONTHLY_CAP")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(250);
+        .unwrap_or(500);
 
     let max_rows = std::env::var("TINYZKP_MAX_ROWS")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(2_097_152);
+        .unwrap_or(4_194_304);
     let free_max_rows = std::env::var("TINYZKP_FREE_MAX_ROWS")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -1898,7 +1898,7 @@ async fn main() -> anyhow::Result<()> {
     let pro_max_rows = std::env::var("TINYZKP_PRO_MAX_ROWS")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(131_072);
+        .unwrap_or(262_144);
     let scale_max_rows = std::env::var("TINYZKP_SCALE_MAX_ROWS")
         .ok()
         .and_then(|s| s.parse().ok())

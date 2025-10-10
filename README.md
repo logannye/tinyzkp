@@ -113,16 +113,16 @@ Our hosted API is available at `https://api.tinyzkp.com`
 
 | Tier | Price | Monthly Proofs | Max Circuit Size | Best For |
 |------|-------|----------------|------------------|----------|
-| **Free** | $0/mo | 250 | 32,768 rows | Learning, prototyping |
-| **Pro** | $39/mo | 500 | 131,072 rows | Production dev use |
-| **Scale** | $199/mo | 250 | 2,097,152 rows (2M) | Enterprise zkML |
+| **Free** | $0/mo | 50 | 32,768 rows | Learning, prototyping |
+| **Pro** | $39/mo | 250 | 262,144 rows | Production dev use |
+| **Scale** | $199/mo | 500 | 2,097,152 rows (2M) | Enterprise zkML |
 
 ### 📊 What You Can Prove
 
 | Tier | Circuit Size | Example Use Cases |
 |------|--------------|-------------------|
 | **Free (32K rows)** | 32,768 | MNIST-class models, basic constraint systems, small ML |
-| **Pro (128K rows)** | 131,072 | MobileNet (quantized), CIFAR-10 CNNs, medium ML models |
+| **Pro (256K rows)** | 262,144 | MobileNet (quantized), CIFAR-10 CNNs, medium ML models |
 | **Scale (2M rows)** | 2,097,152 | **ResNet-34, BERT-base, GPT-2-medium** - production zkML |
 
 ### Rate Limits
@@ -134,9 +134,9 @@ Our hosted API is available at `https://api.tinyzkp.com`
 
 ### 💳 Upgrading Your Account
 
-1. Sign up for free tier (250 proofs/month, 32K rows)
+1. Sign up for free tier (50 proofs/month, 32K rows)
 2. Visit https://tinyzkp.com to upgrade
-3. Choose Pro ($39/mo, 128K rows) or Scale ($199/mo, 2M rows)
+3. Choose Pro ($39/mo, 256K rows) or Scale ($199/mo, 2M rows)
 4. Complete payment via Stripe
 5. Your account is upgraded instantly
 6. Same API key, new limits!
@@ -275,8 +275,8 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ### Rate Limits
 - Global: 10 requests/second per IP (burst: 30)
-- Monthly caps enforced per tier (Free: 250, Pro: 500, Scale: 250)
-- Circuit size limits enforced per tier (Free: 32K, Pro: 128K, Scale: 2M)
+- Monthly caps enforced per tier (Free: 50, Pro: 250, Scale: 500)
+- Circuit size limits enforced per tier (Free: 32K, Pro: 256K, Scale: 2M)
 - **Scale tier enables production zkML** (ResNet-34, BERT-base, GPT-2-medium)
 
 ---
