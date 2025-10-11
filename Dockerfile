@@ -30,9 +30,9 @@ WORKDIR /app
 COPY --from=builder /app/target/release/tinyzkp_api /usr/local/bin/
 COPY --from=builder /app/target/release/generate_production_srs /usr/local/bin/
 
-# Note: SRS files excluded from git (>100MB). Generate on Railway:
-#   railway run generate_production_srs 4194304
-# No SRS files copied - will be generated directly on Railway volume
+# Copy 512K SRS files from Git repo to temp location (won't be shadowed by volume)
+# Entrypoint will copy these to /app/srs/ if volume is empty or has wrong files
+COPY srs/ /tmp/srs_image/
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
