@@ -117,7 +117,7 @@ fn start_srs_loading_background(max_degree: usize) {
 
     // Spawn background task
     tokio::spawn(async move {
-        eprintln!("⏳ Starting background SRS loading (16MB, ~30 seconds)...");
+        eprintln!("⏳ Starting background SRS loading (16MB, ~60 seconds)...");
         
         let result: Result<(), String> = (|| {
             #[cfg(not(feature = "dev-srs"))]
@@ -211,7 +211,7 @@ async fn require_srs(max_degree: usize) -> Result<(), (StatusCode, String)> {
     // Return 503 with helpful message
     Err((
         StatusCode::SERVICE_UNAVAILABLE,
-        "SRS is loading in background (~30 seconds). Please retry in 30 seconds. Check /v1/health for status.".to_string()
+        "SRS is loading in background (~60 seconds). Please retry in 60 seconds. Check /v1/health for status.".to_string()
     ))
 }
 
@@ -2083,8 +2083,8 @@ async fn main() -> anyhow::Result<()> {
     println!("SRS Initialization: Background loading enabled");
     println!("  - SRS auto-loads on first proof/verify request (no HTTP timeout!)");
     println!("  - Max degree: {} ({}K rows, 16MB)", max_rows, max_rows / 1024);
-    println!("  - First request returns 503 immediately, loading happens in background (~30s)");
-    println!("  - Clients should retry after 30 seconds");
+    println!("  - First request returns 503 immediately, loading happens in background (~60s)");
+    println!("  - Clients should retry after 60 seconds");
     println!("  - Check /v1/health for loading status");
     println!();
     println!("Optional: Manual initialization via admin endpoint:");
