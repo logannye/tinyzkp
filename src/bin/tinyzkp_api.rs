@@ -119,23 +119,37 @@ fn start_srs_loading_background(max_degree: usize) {
     tokio::spawn(async move {
         eprintln!("⏳ Starting background SRS loading (16MB, ~30 seconds)...");
         
-        let result = std::panic::catch_unwind(|| {
+        let result: Result<(), String> = (|| {
             #[cfg(not(feature = "dev-srs"))]
             {
                 let g1_path = std::env::var("SSZKP_SRS_G1_PATH")
-                    .expect("SSZKP_SRS_G1_PATH not set");
+                    .map_err(|e| format!("SSZKP_SRS_G1_PATH not set: {}", e))?;
                 let g2_path = std::env::var("SSZKP_SRS_G2_PATH")
-                    .expect("SSZKP_SRS_G2_PATH not set");
+                    .map_err(|e| format!("SSZKP_SRS_G2_PATH not set: {}", e))?;
 
                 eprintln!("  Loading from:");
                 eprintln!("    G1: {}", g1_path);
                 eprintln!("    G2: {}", g2_path);
 
+                // Check if files exist
+                if !std::path::Path::new(&g1_path).exists() {
+                    return Err(format!("G1 file not found: {}", g1_path));
+                }
+                if !std::path::Path::new(&g2_path).exists() {
+                    return Err(format!("G2 file not found: {}", g2_path));
+                }
+
+                eprintln!("  Files exist, loading...");
+
                 let g1_powers = myzkp::srs_setup::load_and_validate_g1_srs(&g1_path, max_degree)
-                    .expect("Failed to load G1 SRS");
+                    .map_err(|e| format!("Failed to load G1 SRS: {}", e))?;
+
+                eprintln!("  G1 loaded, loading G2...");
 
                 let tau_g2 = myzkp::srs_setup::load_and_validate_g2_srs(&g2_path)
-                    .expect("Failed to load G2 SRS");
+                    .map_err(|e| format!("Failed to load G2 SRS: {}", e))?;
+
+                eprintln!("  G2 loaded, initializing PCS...");
 
                 myzkp::pcs::load_srs_g1(&g1_powers);
                 myzkp::pcs::load_srs_g2(tau_g2);
@@ -161,7 +175,9 @@ fn start_srs_loading_background(max_degree: usize) {
 
             eprintln!("  G1 digest: {:02x?}", &g1_dig[..8]);
             eprintln!("  G2 digest: {:02x?}", &g2_dig[..8]);
-        });
+            
+            Ok(())
+        })();
 
         match result {
             Ok(_) => {
@@ -171,7 +187,7 @@ fn start_srs_loading_background(max_degree: usize) {
             }
             Err(e) => {
                 SRS_LOADING.store(false, Ordering::Relaxed);
-                eprintln!("❌ SRS loading failed: {:?}", e);
+                eprintln!("❌ SRS loading failed: {}", e);
             }
         }
     });
