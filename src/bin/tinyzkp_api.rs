@@ -7,7 +7,9 @@
 //! - POST /v1/domain/plan        { rows, b_blk?, zh_c? } -> N, b_blk_hint, omega_ok, mem_hint
 //! - POST /v1/signup             { email, password } -> { user_id, email, api_key, tier, session_token }
 //! - POST /v1/auth/signup        (alias for /v1/signup, backward compatibility)
-//! - POST /v1/auth/login         { email, password } -> { user_id, email, api_key, tier, session_token }
+//! - POST /v1/signin             { email, password } -> { user_id, email, api_key, tier, session_token }
+//! - POST /v1/login              (alias for /v1/signin)
+//! - POST /v1/auth/login         (alias for /v1/signin, backward compatibility)
 //! - GET  /v1/me                 (X-Session-Token: <session>) -> account info
 //! - POST /v1/keys/rotate        (X-Session-Token: <session>) -> { api_key }
 //!
@@ -2046,7 +2048,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/domain/plan", post(domain_plan))
         .route("/v1/signup", post(auth_signup))  // Frontend expects /v1/signup
         .route("/v1/auth/signup", post(auth_signup))  // Keep for backward compatibility
-        .route("/v1/auth/login", post(auth_login))
+        .route("/v1/signin", post(auth_login))  // Frontend expects /v1/signin
+        .route("/v1/login", post(auth_login))  // Alternative login endpoint
+        .route("/v1/auth/login", post(auth_login))  // Keep for backward compatibility
         .route("/v1/me", get(me))
         .route("/v1/keys/rotate", post(rotate_key))
         .route("/v1/prove", post(prove_checked))
