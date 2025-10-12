@@ -5,7 +5,8 @@
 //! - GET  /v1/health
 //! - GET  /v1/version
 //! - POST /v1/domain/plan        { rows, b_blk?, zh_c? } -> N, b_blk_hint, omega_ok, mem_hint
-//! - POST /v1/auth/signup        { email, password } -> { user_id, api_key, tier, session_token }
+//! - POST /v1/signup             { email, password } -> { user_id, email, api_key, tier, session_token }
+//! - POST /v1/auth/signup        (alias for /v1/signup, backward compatibility)
 //! - POST /v1/auth/login         { email, password } -> { user_id, api_key, tier, session_token }
 //! - GET  /v1/me                 (X-Session-Token: <session>) -> account info
 //! - POST /v1/keys/rotate        (X-Session-Token: <session>) -> { api_key }
@@ -523,6 +524,7 @@ struct SignupReq {
 #[derive(Serialize)]
 struct SignupRes {
     user_id: String,
+    email: String,
     api_key: String,
     tier: String,
     session_token: String,
@@ -874,7 +876,7 @@ async fn auth_signup(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .is_some()
     {
-        return Err((StatusCode::CONFLICT, "email already registered".into()));
+        return Err((StatusCode::BAD_REQUEST, "email already exists".into()));
     }
 
     let api_key = random_key();
@@ -929,6 +931,7 @@ async fn auth_signup(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(SignupRes {
         user_id,
+        email: email.clone(),
         api_key,
         tier: "free".into(),
         session_token: session,
@@ -2039,7 +2042,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/health", get(health))
         .route("/v1/version", get(version))
         .route("/v1/domain/plan", post(domain_plan))
-        .route("/v1/auth/signup", post(auth_signup))
+        .route("/v1/signup", post(auth_signup))  // Frontend expects /v1/signup
+        .route("/v1/auth/signup", post(auth_signup))  // Keep for backward compatibility
         .route("/v1/auth/login", post(auth_login))
         .route("/v1/me", get(me))
         .route("/v1/keys/rotate", post(rotate_key))
