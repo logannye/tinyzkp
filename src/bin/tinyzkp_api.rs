@@ -7,7 +7,7 @@
 //! - POST /v1/domain/plan        { rows, b_blk?, zh_c? } -> N, b_blk_hint, omega_ok, mem_hint
 //! - POST /v1/signup             { email, password } -> { user_id, email, api_key, tier, session_token }
 //! - POST /v1/auth/signup        (alias for /v1/signup, backward compatibility)
-//! - POST /v1/auth/login         { email, password } -> { user_id, api_key, tier, session_token }
+//! - POST /v1/auth/login         { email, password } -> { user_id, email, api_key, tier, session_token }
 //! - GET  /v1/me                 (X-Session-Token: <session>) -> account info
 //! - POST /v1/keys/rotate        (X-Session-Token: <session>) -> { api_key }
 //!
@@ -539,6 +539,7 @@ struct LoginReq {
 #[derive(Serialize)]
 struct LoginRes {
     user_id: String,
+    email: String,
     api_key: String,
     tier: String,
     session_token: String,
@@ -1069,6 +1070,7 @@ async fn auth_login(
 
     Ok(Json(LoginRes {
         user_id,
+        email: email.clone(),
         api_key,
         tier: tier_live,
         session_token: session,
